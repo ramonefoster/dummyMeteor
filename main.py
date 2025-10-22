@@ -1,8 +1,8 @@
 import tensorflow as tf
-from PIL import Image, ImageOps     # Install pillow instead of PIL
-import numpy as np                  # Numpy provides numeric processing
+from PIL import Image, ImageOps     
+import numpy as np                  
 import shutil
-import datetime                     # What time is it for solar altitude
+import datetime                     
 import time
 import requests
 import os
@@ -11,7 +11,7 @@ class MeteorDetection():
     def __init__(self):        
         np.set_printoptions(suppress=True) 
 
-        # Create necessary directories
+        # Create directories
         os.makedirs("detections", exist_ok=True)
         os.makedirs("night_images", exist_ok=True)
 
@@ -24,37 +24,32 @@ class MeteorDetection():
         self.data = np.ndarray(shape=(1, 224, 224, 3), dtype=np.float32) 
 
     def detect(self, path):
-        try:
-            # If the sun is up don't bother running the model 
-            # (You can add solar altitude calculation here later)
-            
-            # Load the image from the AllSkyCam 
+        try:            
+            # Load the image
             image = Image.open(path).convert("RGB") 
 
-            # resizing the image to be at least 224x224 cropped from the center 
+            # resizing the image 224x224 cropped from the center 
             size = (224, 224) 
             image = ImageOps.fit(image, size, Image.Resampling.LANCZOS) 
 
-            # turn the image into a numpy array 
+            # image to numpy array 
             image_array = np.asarray(image) 
 
-            # Normalize the image 
             normalized_image_array = (image_array.astype(np.float32) / 127.5) - 1 
 
-            # Load the image into the array 
             self.data[0] = normalized_image_array 
 
-            # Run the image through the model 
+            # predicting 
             prediction = self.model.predict(self.data) 
             index = np.argmax(prediction) 
             class_name = self.class_names[index].strip() 
             confidence_score = prediction[0][index] 
 
-            # Create unique filename with timestamp
+            # filename with timestamp
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")
             new_file_path = f"detections/meteor_{timestamp}.jpg"
 
-            if index == 0 and confidence_score > 0.75:  # Assuming class 0 is "meteor"
+            if index == 0 and confidence_score > 0.75:  # class 0 is "meteor"
                 print(f"Meteor Detected: {class_name} ({confidence_score*100:.2f}%)")
                 shutil.copy2(path, new_file_path)
                 return True, confidence_score
@@ -88,9 +83,9 @@ def download_image_url(url, identifier):
         return None
 
 def is_night_time():
-    """Check if it's currently night time to avoid processing during daylight"""
+    """Check if it's night time, ignore daytime data"""
     current_hour = datetime.datetime.now().hour
-    # Adjust these hours based on your location and season
+    # Based on OPD
     return current_hour >= 18 or current_hour <= 6
 
 if __name__ == "__main__":
@@ -112,7 +107,7 @@ if __name__ == "__main__":
             
             # Check if it's time to download new images
             if current_time - last_download_time >= download_interval:
-                if is_night_time():  # Only run at night
+                if is_night_time():  # only run at night
                     for i, url in enumerate(allsky_urls):
                         print(f"Downloading from AllSky {i+1}...")
                         img_path = download_image_url(url, f"cam{i+1}")
@@ -122,8 +117,8 @@ if __name__ == "__main__":
                     last_download_time = current_time
                 else:
                     print("Daytime - skipping detection")
-                    time.sleep(300)  # Sleep longer during daytime
-                    last_download_time = time.time()  # Reset timer
+                    time.sleep(300)  # longer during daytime
+                    last_download_time = time.time()  # reset timer
             
             time.sleep(1)
             
