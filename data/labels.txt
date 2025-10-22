@@ -1,0 +1,4 @@
+0 meteor
+1 no detection
+2 offline
+3 saturated
